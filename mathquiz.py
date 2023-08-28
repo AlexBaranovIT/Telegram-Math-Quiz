@@ -118,14 +118,13 @@ def generate_question_text(operation, num1, num2):
         return f"What is {num1} - {num2}?"
     elif operation == 'multiplication':
         return f"What is {num1} * {num2}?"
-    elif operation == 'division':
+    elif operation == 'division': 
         return f"What is {num1 * num2} / {num1}?"
 
 
 def calculate_correct_answer(operation, num1, num2):
     if operation == 'addition':
         return num1 + num2
-    elif operation == 'subtraction':
         return num1 - num2
     elif operation == 'multiplication':
         return num1 * num2
