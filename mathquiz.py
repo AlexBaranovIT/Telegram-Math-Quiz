@@ -2,7 +2,7 @@ import random
 # pip install telebot
 import telebot
 
-TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
+TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN' # HTTP API from BotFather in Telegram
 bot = telebot.TeleBot(TOKEN)
 
 user_data = {}  # Dictionary to store user data
