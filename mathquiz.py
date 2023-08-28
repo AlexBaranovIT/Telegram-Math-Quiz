@@ -1,32 +1,23 @@
 import random
 import telebot
-import sqlite3
 
 TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
 bot = telebot.TeleBot(TOKEN)
 
-conn = sqlite3.connect('user_data.db')
-cursor = conn.cursor()
+user_data = {}  # Dictionary to store user data
 
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS users (
-    chat_id INTEGER PRIMARY KEY,
-    operation TEXT,
-    correct_answer INTEGER,
-    level INTEGER
-)
-''')
-conn.commit()
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    bot.send_message(message.chat.id, "Welcome to the Math Quiz Bot! Use commands like /addition, /subtraction, /multiplication, /division to play.")
+    bot.send_message(message.chat.id,
+                     "Welcome to the Math Quiz Bot! Use commands like /addition, /subtraction, /multiplication, /division to play.")
+
 
 @bot.message_handler(commands=['addition', 'subtraction', 'multiplication', 'division'])
 def handle_operation(message):
     operation = message.text[1:]
     user_data[message.chat.id] = {'operation': operation}
-    
+
     if operation in ['addition', 'subtraction']:
         level_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=5, one_time_keyboard=True)
         levels = list(range(1, 11))
@@ -43,27 +34,44 @@ def handle_operation(message):
         level_keyboard.add(*[telebot.types.KeyboardButton(str(level)) for level in levels])
         bot.send_message(message.chat.id, "Choose level (1-5):", reply_markup=level_keyboard)
 
+
 @bot.message_handler(func=lambda message: True)
 def handle_level(message):
     level = int(message.text)
     if message.chat.id in user_data:
         operation = user_data[message.chat.id]['operation']
-        
+
         if operation in ['addition', 'subtraction']:
             min_num = (level - 1) * 10 + 1
             max_num = level * 10
         elif operation in ['multiplication', 'division']:
             min_num = 1
             max_num = 10 if level == 1 else (level + 1) * 10
-        
+
         num1 = random.randint(min_num, max_num)
         num2 = random.randint(min_num, max_num)
         question = generate_question(operation, num1, num2)
-        
+
         correct_answer = calculate_correct_answer(operation, num1, num2)
         user_data[message.chat.id]['correct_answer'] = correct_answer
-        
+
         bot.send_message(message.chat.id, question)
+
+
+@bot.message_handler(func=lambda message: True)
+def handle_answer(message):
+    if message.chat.id in user_data:
+        correct_answer = user_data[message.chat.id]['correct_answer']
+
+        try:
+            user_answer = int(message.text)
+            if user_answer == correct_answer:
+                bot.send_message(message.chat.id, "Correct!")
+            else:
+                bot.send_message(message.chat.id, f"Incorrect. The correct answer is {correct_answer}.")
+        except ValueError:
+            bot.send_message(message.chat.id, "Invalid input. Please enter a number.")
+
 
 def generate_question(operation, num1, num2):
     if operation == 'addition':
@@ -75,6 +83,7 @@ def generate_question(operation, num1, num2):
     elif operation == 'division':
         return f"What is {num1 * num2} / {num1}?"
 
+
 def calculate_correct_answer(operation, num1, num2):
     if operation == 'addition':
         return num1 + num2
@@ -85,16 +94,5 @@ def calculate_correct_answer(operation, num1, num2):
     elif operation == 'division':
         return num2
 
-def save_user_data(chat_id, operation, correct_answer, level):
-    cursor.execute('''
-    INSERT OR REPLACE INTO users (chat_id, operation, correct_answer, level)
-    VALUES (?, ?, ?, ?)
-    ''', (chat_id, operation, correct_answer, level))
-    conn.commit()
 
-def load_user_data(chat_id):
-    cursor.execute('SELECT operation, correct_answer, level FROM users WHERE chat_id = ?', (chat_id,))
-    return cursor.fetchone()
-
-    
 bot.polling(none_stop=True)
