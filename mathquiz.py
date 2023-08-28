@@ -9,8 +9,10 @@ user_data = {}  # Dictionary to store user data
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    bot.send_message(message.chat.id,
-                     "Welcome to the Math Quiz Bot! Use commands like /addition, /subtraction, /multiplication, /division to play.")
+    markup = telebot.types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True)
+    markup.add('/addition', '/subtraction', '/multiplication', '/division')
+    
+    bot.send_message(message.chat.id, "Welcome to the Math Quiz Bot!\nChoose an operation:", reply_markup=markup)
 
 
 @bot.message_handler(commands=['addition', 'subtraction', 'multiplication', 'division'])
