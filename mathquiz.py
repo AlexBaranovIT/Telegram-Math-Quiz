@@ -84,7 +84,7 @@ def generate_question(chat_id, operation, min_num, max_num, num_problems):
             summary = f"Quiz completed!\nCorrect answers: {correct_count}\nTotal questions: {total_count}\nPercent correct: {percent_correct:.2f}%"
             bot.send_message(chat_id, summary, reply_markup=markup)
 
-
+ 
 @bot.message_handler(func=lambda message: True)
 def handle_answer(message):
     if message.chat.id in user_data:
