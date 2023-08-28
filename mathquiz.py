@@ -1,59 +1,100 @@
 import random
 import telebot
+import sqlite3
 
 TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
 bot = telebot.TeleBot(TOKEN)
 
+conn = sqlite3.connect('user_data.db')
+cursor = conn.cursor()
 
-def generate_question(operation, num1, num2):
-    if operation == 'addition':
-        question = f"What is {num1} + {num2}?"
-    elif operation == 'subtraction':
-        question = f"What is {num1} - {num2}?"
-    elif operation == 'multiplication':
-        question = f"What is {num1} * {num2}?"
-    elif operation == 'division':
-        question = f"What is {num1} / {num2}?"
-    return question
-
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    chat_id INTEGER PRIMARY KEY,
+    operation TEXT,
+    correct_answer INTEGER,
+    level INTEGER
+)
+''')
+conn.commit()
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     bot.send_message(message.chat.id, "Welcome to the Math Quiz Bot! Use commands like /addition, /subtraction, /multiplication, /division to play.")
 
-
 @bot.message_handler(commands=['addition', 'subtraction', 'multiplication', 'division'])
 def handle_operation(message):
     operation = message.text[1:]
-    if operation == 'addition':
-        bot.send_message(message.chat.id, "You've selected addition.")
-        difficulty_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True)
-        difficulty_keyboard.add(telebot.types.KeyboardButton("1-10"), telebot.types.KeyboardButton("1-100000"))
-        bot.send_message(message.chat.id, "Choose difficulty:", reply_markup=difficulty_keyboard)
-    elif operation == 'subtraction':
-        bot.send_message(message.chat.id, "You've selected subtraction.")
-        difficulty_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=2, one_time_keyboard=True)
-        difficulty_keyboard.add(telebot.types.KeyboardButton("1-1000"), telebot.types.KeyboardButton("1-100000"))
-        bot.send_message(message.chat.id, "Choose difficulty:", reply_markup=difficulty_keyboard)
+    user_data[message.chat.id] = {'operation': operation}
+    
+    if operation in ['addition', 'subtraction']:
+        level_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=5, one_time_keyboard=True)
+        levels = list(range(1, 11))
+        level_keyboard.add(*[telebot.types.KeyboardButton(str(level)) for level in levels])
+        bot.send_message(message.chat.id, "Choose level (1-10):", reply_markup=level_keyboard)
     elif operation == 'multiplication':
-        bot.send_message(message.chat.id, "You've selected multiplication.")
-        difficulty_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True)
-        difficulty_keyboard.add(telebot.types.KeyboardButton("1-10"))
-        bot.send_message(message.chat.id, "Choose difficulty:", reply_markup=difficulty_keyboard)
+        level_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=3, one_time_keyboard=True)
+        levels = [1, 2, 3, 4, 5]
+        level_keyboard.add(*[telebot.types.KeyboardButton(str(level)) for level in levels])
+        bot.send_message(message.chat.id, "Choose level (1-5):", reply_markup=level_keyboard)
     elif operation == 'division':
-        bot.send_message(message.chat.id, "You've selected division.")
-        difficulty_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=1, one_time_keyboard=True)
-        difficulty_keyboard.add(telebot.types.KeyboardButton("1-10"))
-        bot.send_message(message.chat.id, "Choose difficulty:", reply_markup=difficulty_keyboard)
-
+        level_keyboard = telebot.types.ReplyKeyboardMarkup(row_width=3, one_time_keyboard=True)
+        levels = [1, 2, 3, 4, 5]
+        level_keyboard.add(*[telebot.types.KeyboardButton(str(level)) for level in levels])
+        bot.send_message(message.chat.id, "Choose level (1-5):", reply_markup=level_keyboard)
 
 @bot.message_handler(func=lambda message: True)
-def handle_difficulty(message):
-    difficulty = message.text
-    if '-' in difficulty:
-        min_num, max_num = map(int, difficulty.split('-'))
-        question = generate_question(min_num, max_num)
+def handle_level(message):
+    level = int(message.text)
+    if message.chat.id in user_data:
+        operation = user_data[message.chat.id]['operation']
+        
+        if operation in ['addition', 'subtraction']:
+            min_num = (level - 1) * 10 + 1
+            max_num = level * 10
+        elif operation in ['multiplication', 'division']:
+            min_num = 1
+            max_num = 10 if level == 1 else (level + 1) * 10
+        
+        num1 = random.randint(min_num, max_num)
+        num2 = random.randint(min_num, max_num)
+        question = generate_question(operation, num1, num2)
+        
+        correct_answer = calculate_correct_answer(operation, num1, num2)
+        user_data[message.chat.id]['correct_answer'] = correct_answer
+        
         bot.send_message(message.chat.id, question)
-      
 
+def generate_question(operation, num1, num2):
+    if operation == 'addition':
+        return f"What is {num1} + {num2}?"
+    elif operation == 'subtraction':
+        return f"What is {num1} - {num2}?"
+    elif operation == 'multiplication':
+        return f"What is {num1} * {num2}?"
+    elif operation == 'division':
+        return f"What is {num1 * num2} / {num1}?"
+
+def calculate_correct_answer(operation, num1, num2):
+    if operation == 'addition':
+        return num1 + num2
+    elif operation == 'subtraction':
+        return num1 - num2
+    elif operation == 'multiplication':
+        return num1 * num2
+    elif operation == 'division':
+        return num2
+
+def save_user_data(chat_id, operation, correct_answer, level):
+    cursor.execute('''
+    INSERT OR REPLACE INTO users (chat_id, operation, correct_answer, level)
+    VALUES (?, ?, ?, ?)
+    ''', (chat_id, operation, correct_answer, level))
+    conn.commit()
+
+def load_user_data(chat_id):
+    cursor.execute('SELECT operation, correct_answer, level FROM users WHERE chat_id = ?', (chat_id,))
+    return cursor.fetchone()
+
+    
 bot.polling(none_stop=True)
