@@ -56,5 +56,4 @@ def handle_difficulty(message):
         bot.send_message(message.chat.id, question)
       
 
-if __name__ == "__main__":
-    bot.polling()
+bot.polling()
