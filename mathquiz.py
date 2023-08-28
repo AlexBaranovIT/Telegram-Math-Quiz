@@ -1,4 +1,5 @@
 import random
+# pip install telebot
 import telebot
 
 TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
